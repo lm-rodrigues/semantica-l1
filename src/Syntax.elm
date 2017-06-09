@@ -5,9 +5,9 @@ module Syntax exposing (..)
 
 
 type Type
-    = Tint
-    | Tbool
-    | Ty FunctionType
+    = TINT
+    | TBOOL
+    | TFN FunctionType
 
 
 type alias FunctionType =
@@ -15,11 +15,16 @@ type alias FunctionType =
 
 
 type Operator
-    = Sum
-    | Diff
-    | Mult
-    | Eq
-    | Leq
+    = SUM
+    | DIFF
+    | MULT
+    | DIV
+    | LEQ
+    | LT
+    | GEQ
+    | GT
+    | EQ
+    | NEQ
     | AND
     | OR
     | NOT
@@ -45,12 +50,23 @@ type alias Function =
 
 
 type Expression
-    = ENum Int
-    | EBool Int
-    | Bop Expression Operator Expression
-    | If Expression Expression Expression
-    | Var Variable
-    | App Expression Expression
-    | Lam Function
-    | Let Function Expression
-    | Lrec Variable FunctionType Function Expression
+    = ENUM Int
+    | EBOOL Bool
+    | BOP Expression Operator Expression
+    | VAR Variable
+    | IF Expression Expression Expression
+    | APP Expression Expression
+    | FN Function
+    | LET Function Expression
+    | LETREC Variable FunctionType Function Expression
+
+
+
+-- ENUM
+-- EBOOL
+-- VAR
+-- IF
+-- APP
+-- FN
+-- LET
+-- LETREC

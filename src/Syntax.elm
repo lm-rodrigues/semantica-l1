@@ -1,9 +1,10 @@
 module Syntax exposing (..)
 
+import Environment exposing (Environment)
+
+
 {-| Provides the basic elements of Syntax of Typed L1.
 -}
-
-
 type Type
     = TINT
     | TBOOL
@@ -31,14 +32,10 @@ type Operator
 
 
 type Value
-    = Vnum Int
-    | Vbool Bool
-    | Closure Variable Expression Envinroment
-    | RClosure Variable Variable Expression Envinroment
-
-
-type Envinroment
-    = List ( Variable, Value )
+    = VNUM Int
+    | VBOOL Bool
+    | Closure Variable Expression (Environment Variable Value)
+    | RClosure Variable Variable Expression (Environment Variable Value)
 
 
 type alias Variable =

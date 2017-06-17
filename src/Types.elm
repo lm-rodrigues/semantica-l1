@@ -1,34 +1,12 @@
 module Types exposing (typeInfer)
 
+import Environment exposing (..)
 import Syntax as S
 import Syntax exposing (..)
 
 
 type alias TypeEnvironment =
-    List ( Variable, Type )
-
-
-emptyEnv : TypeEnvironment
-emptyEnv =
-    []
-
-
-insertEnv : Variable -> Type -> TypeEnvironment -> TypeEnvironment
-insertEnv variable variableType typeEnvironment =
-    ( variable, variableType ) :: typeEnvironment
-
-
-envLookup : Variable -> TypeEnvironment -> Maybe Type
-envLookup variable typeEnvironment =
-    case typeEnvironment of
-        ( keyVariable, variableType ) :: xs ->
-            if variable == keyVariable then
-                Just variableType
-            else
-                envLookup variable xs
-
-        [] ->
-            Nothing
+    Environment Variable Type
 
 
 typeInfer : Expression -> Maybe Type

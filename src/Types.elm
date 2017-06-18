@@ -17,6 +17,9 @@ typeInfer expression =
 internalTypeInfer : TypeEnvironment -> Expression -> Maybe Type
 internalTypeInfer typeEnvironment expression =
     case expression of
+        UOP operator expressionOne ->
+            unaryOperationTypeInfer typeEnvironment operator expressionOne
+
         BOP expressionOne operator expressionTwo ->
             binaryOperationTypeInfer typeEnvironment expressionOne operator expressionTwo
 
@@ -139,7 +142,21 @@ letRecTypeInfer typeEnvironment recursiveFunction ( inputType, outputType ) ( va
                 Nothing
 
 
-binaryOperationTypeInfer : TypeEnvironment -> Expression -> Operator -> Expression -> Maybe Type
+unaryOperationTypeInfer : TypeEnvironment -> UnaryOperator -> Expression -> Maybe Type
+unaryOperationTypeInfer typeEnvironment operator expressionOne =
+    let
+        expressionOneType =
+            internalTypeInfer typeEnvironment expressionOne
+    in
+        case ( operator, expressionOneType ) of
+            ( NOT, Just TBOOL ) ->
+                Just TBOOL
+
+            _ ->
+                Nothing
+
+
+binaryOperationTypeInfer : TypeEnvironment -> Expression -> BinaryOperator -> Expression -> Maybe Type
 binaryOperationTypeInfer typeEnvironment expressionOne operator expressionTwo =
     let
         expressionOneType =
@@ -197,9 +214,6 @@ binaryOperationTypeInfer typeEnvironment expressionOne operator expressionTwo =
                 booleanOperationsType
 
             OR ->
-                booleanOperationsType
-
-            NOT ->
                 booleanOperationsType
 
 

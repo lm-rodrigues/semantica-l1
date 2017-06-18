@@ -15,7 +15,7 @@ type alias FunctionType =
     ( Type, Type )
 
 
-type Operator
+type BinaryOperator
     = SUM
     | DIFF
     | MULT
@@ -28,7 +28,10 @@ type Operator
     | NEQ
     | AND
     | OR
-    | NOT
+
+
+type UnaryOperator
+    = NOT
 
 
 type Value
@@ -49,21 +52,11 @@ type alias Function =
 type Expression
     = ENUM Int
     | EBOOL Bool
-    | BOP Expression Operator Expression
+    | UOP UnaryOperator Expression
+    | BOP Expression BinaryOperator Expression
     | VAR Variable
     | IF Expression Expression Expression
     | APP Expression Expression
     | FN Function
     | LET Function Expression
     | LETREC Variable FunctionType Function Expression
-
-
-
--- ENUM
--- EBOOL
--- VAR
--- IF
--- APP
--- FN
--- LET
--- LETREC

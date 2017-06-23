@@ -165,56 +165,87 @@ binaryOperationTypeInfer typeEnvironment expressionOne operator expressionTwo =
         expressionTwoType =
             internalTypeInfer typeEnvironment expressionTwo
 
-        numericOperationsType =
+        isNumericOperation =
             isValidNumericOperation expressionOneType expressionTwoType
 
-        booleanOperationsType =
+        isBooleanOperation =
             isValidBooleanOperation expressionOneType expressionTwoType
 
-        comparisonOperations =
-            if isBooleanExpression expressionOneType then
-                isValidBooleanOperation expressionOneType expressionTwoType
-            else if isNumericExpression expressionOneType then
-                isValidNumericOperation expressionOneType expressionTwoType
-            else
-                Nothing
+        isComparisonOperation =
+            isBooleanOperation || isNumericOperation
     in
         case operator of
             SUM ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TINT
+                else
+                    Nothing
 
             DIFF ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TINT
+                else
+                    Nothing
 
             MULT ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TINT
+                else
+                    Nothing
 
             DIV ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TINT
+                else
+                    Nothing
 
             LEQ ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
             S.LT ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
             GEQ ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
             S.GT ->
-                numericOperationsType
+                if isNumericOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
             S.EQ ->
-                comparisonOperations
+                if isComparisonOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
             NEQ ->
-                comparisonOperations
+                if isComparisonOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
             AND ->
-                booleanOperationsType
+                if isBooleanOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
             OR ->
-                booleanOperationsType
+                if isBooleanOperation then
+                    Just TBOOL
+                else
+                    Nothing
 
 
 isBooleanExpression : Maybe Type -> Bool
@@ -222,15 +253,10 @@ isBooleanExpression expressionType =
     expressionType == Just TBOOL
 
 
-isValidBooleanOperation : Maybe Type -> Maybe Type -> Maybe Type
+isValidBooleanOperation : Maybe Type -> Maybe Type -> Bool
 isValidBooleanOperation expressionOneType expressionTwoType =
-    if
-        (isBooleanExpression expressionOneType)
-            && (isBooleanExpression expressionTwoType)
-    then
-        Just TBOOL
-    else
-        Nothing
+    (isBooleanExpression expressionOneType)
+        && (isBooleanExpression expressionTwoType)
 
 
 isNumericExpression : Maybe Type -> Bool
@@ -238,12 +264,7 @@ isNumericExpression expressionType =
     expressionType == Just TINT
 
 
-isValidNumericOperation : Maybe Type -> Maybe Type -> Maybe Type
+isValidNumericOperation : Maybe Type -> Maybe Type -> Bool
 isValidNumericOperation expressionOneType expressionTwoType =
-    if
-        (isNumericExpression expressionOneType)
-            && (isNumericExpression expressionTwoType)
-    then
-        Just TINT
-    else
-        Nothing
+    (isNumericExpression expressionOneType)
+        && (isNumericExpression expressionTwoType)

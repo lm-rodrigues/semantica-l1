@@ -21,6 +21,9 @@ let rec envLookup searchKey environment =
        envLookup searchKey xs
   | [] ->
      raise KeyNotInEnvironment
+
+
+	   
 (* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; *)
 (* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; *)
 (* Provides the basic elements of Syntax of Typed L1. *)
@@ -66,21 +69,18 @@ type value =
   | Closure of string * expression * (string, value) environment
   | RClosure of string * string * expression * (string, value) environment
 
+
+
+							       
 (* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; *)
 (* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; *)
 (* Provides the type system for the language *)
-
 
 type typeEnvironment =
     (string, languageType) environment         
 
 			   
-exception BadTypeIfStatement
-exception BadTypedAppStatement
-exception BadTypedBinaryOperation
-exception BadTypedUnaryOperation
-exception BadTypedLetStatement        
-exception BadTypedLetRecStatement
+exception BadTypedExpression
 
             
 let isBooleanExpression expressionType =
@@ -144,7 +144,7 @@ let rec binaryOperationTypeInfer typeEnvironment expressionOneType operator expr
      TBOOL
 
   | _ ->
-     raise BadTypedBinaryOperation
+     raise BadTypedExpression
 
 let rec internalTypeInfer typeEnvironment expression =
   match expression with
@@ -155,7 +155,7 @@ let rec internalTypeInfer typeEnvironment expression =
           TBOOL
             
        | _ ->
-          raise BadTypedUnaryOperation
+          raise BadTypedExpression
      in 
      unaryOperationTypeInfer typeEnvironment operator expressionOne
 
@@ -175,8 +175,11 @@ let rec internalTypeInfer typeEnvironment expression =
 
        
   | VAR variable ->
-     envLookup variable typeEnvironment
-
+     let varTypeInfer variable =
+     try envLookup variable typeEnvironment with
+       KeyNotInEnvironment -> raise BadTypedExpression
+     in
+     varTypeInfer variable
 	       
   | IF (booleanExpression, expressionOne, expressionTwo) ->
      let ifTypeInfer typeEnvironment condition thenCase elseCase =
@@ -189,7 +192,7 @@ let rec internalTypeInfer typeEnvironment expression =
           thenCaseType
             
        | _ ->
-          raise BadTypeIfStatement
+          raise BadTypedExpression
      in
      ifTypeInfer
        typeEnvironment booleanExpression expressionOne expressionTwo
@@ -204,7 +207,7 @@ let rec internalTypeInfer typeEnvironment expression =
           returnType
 	    
        | _ ->
-          raise BadTypedAppStatement
+          raise BadTypedExpression
      in appTypeInfer typeEnvironment functionExpression argument
 
 		     
@@ -226,7 +229,7 @@ let rec internalTypeInfer typeEnvironment expression =
           internalTypeInfer newTypeEnvironment expressionTwo
 
        | _ ->
-	  raise BadTypedLetStatement
+	  raise BadTypedExpression
 			    
      in letTypeInfer typeEnvironment (variable, variableType, expressionOne, expressionTwo)
 
@@ -246,7 +249,7 @@ let rec internalTypeInfer typeEnvironment expression =
           internalTypeInfer expressionTwoEnvironmentType expressionTwo
 			    
        | _ ->
-          raise BadTypedLetRecStatement
+          raise BadTypedExpression
 
      in letRecTypeInfer
 	  typeEnvironment recursiveFunction inputType outputType

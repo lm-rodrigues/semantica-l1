@@ -86,25 +86,20 @@ exception BadTypedLetRecStatement
 let isBooleanExpression expressionType =
   expressionType = TBOOL
 
-(* isValidBooleanOperation : Maybe Type -> Maybe Type -> Bool *)
 let isValidBooleanOperation expressionOneType expressionTwoType =
   (isBooleanExpression expressionOneType)
   && (isBooleanExpression expressionTwoType)
-      
-(* isNumericExpression : Maybe Type -> Bool*)
+     
 let isNumericExpression expressionType =
   expressionType = TINT
 		     
-(* isValidNumericOperation : Maybe Type -> Maybe Type -> Bool *)
 let isValidNumericOperation expressionOneType expressionTwoType =
   (isNumericExpression expressionOneType)
   && (isNumericExpression expressionTwoType)
 
-
 let rec binaryOperationTypeInfer typeEnvironment expressionOneType operator expressionTwoType = 
   let isNumericOperation =
-    isValidNumericOperation expressionOneType expressionTwoType
-			    
+    isValidNumericOperation expressionOneType expressionTwoType			    
   and isBooleanOperation =
     isValidBooleanOperation expressionOneType expressionTwoType
   in 
@@ -207,6 +202,7 @@ let rec internalTypeInfer typeEnvironment expression =
        | (TFN ( inputType, returnType )), argumentType
             when argumentType = inputType ->
           returnType
+	    
        | _ ->
           raise BadTypedAppStatement
      in appTypeInfer typeEnvironment functionExpression argument
@@ -225,16 +221,19 @@ let rec internalTypeInfer typeEnvironment expression =
        in
        match internalTypeInfer typeEnvironment expressionOne with
        | _ ->
-          internalTypeInfer newTypeEnvironment expressionTwo   
+          internalTypeInfer newTypeEnvironment expressionTwo
+
      in letTypeInfer typeEnvironment (variable, variableType, expressionOne, expressionTwo)
 
 		     
   | LETREC (recursiveFunction, inputType, outputType, subExpressionVariable, subExpressionType, subExpression, expression) ->
      let letRecTypeInfer typeEnvironment recursiveFunction inputType outputType variable variableType subExpression expressionTwo =
        let
-         subExpressionTypeEnvironment = insertEnv variable variableType ( insertEnv recursiveFunction (TFN ( inputType, outputType )) typeEnvironment)
+         subExpressionTypeEnvironment =
+	 insertEnv variable variableType ( insertEnv recursiveFunction (TFN ( inputType, outputType )) typeEnvironment)
        and
-         expressionTwoEnvironmentType = insertEnv recursiveFunction (TFN ( inputType, outputType )) typeEnvironment
+         expressionTwoEnvironmentType =
+	 insertEnv recursiveFunction (TFN ( inputType, outputType )) typeEnvironment
        in
        match internalTypeInfer subExpressionTypeEnvironment subExpression with
        | subExpressionType when
@@ -244,7 +243,9 @@ let rec internalTypeInfer typeEnvironment expression =
        | _ ->
           raise BadTypedLetRecStatement
 
-     in letRecTypeInfer typeEnvironment recursiveFunction inputType outputType subExpressionVariable subExpressionType subExpression expression
+     in letRecTypeInfer
+	  typeEnvironment recursiveFunction inputType outputType
+	  subExpressionVariable subExpressionType subExpression expression
 
 
 

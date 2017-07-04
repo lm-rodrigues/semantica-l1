@@ -456,73 +456,87 @@ let rec internalEval environment expression =
        internalEval recursiveEnvironment expression
      in letRecEval environment recursiveVariable (variable, inputType, subExpression) expression
 
+		   
 
 (* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; *)
 (* ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; *)
 (* Execute type inference and evaluation for some expressions. *)
+
+
 		   
 let eval expression = internalEval emptyEnv expression
 let typeInfer expression = internalTypeInfer emptyEnv expression
+
 					     
-let factorial_generic num = (LETREC
-			       ( "fat"
-			       , TINT
-			       , TINT
-			       , "x"
-			       , TINT
-			       , (IF
-				    ( (BOP
-					 ( (VAR "x")
-					 , EQ
-					 , (ENUM 0)))
-				    , (ENUM 1)
-				    , (BOP
-					 ( (VAR "x")
-					 , MULT
-					 , (APP
-					      ( (VAR "fat")
-					      , (BOP
-						   ( (VAR "x")
-						   , DIFF
-						   , (ENUM 1)))))))))
-			       , (APP
-				    ( (VAR "fat")
-				    , (ENUM num )))));;
+let fatorial_generic num typeOne typeTwo = (LETREC
+					       ( "fat"
+					       , typeOne
+					       , typeTwo
+					       , "x"
+					       , TINT
+					       , (IF
+						    ( (BOP
+							 ( (VAR "x")
+							 , EQ
+							 , (ENUM 0)))
+						    , (ENUM 1)
+						    , (BOP
+							 ( (VAR "x")
+							 , MULT
+							 , (APP
+							      ( (VAR "fat")
+							      , (BOP
+								   ( (VAR "x")
+								   , DIFF
+								   , (ENUM 1)))))))))
+					       , (APP
+						    ( (VAR "fat")
+						    , (ENUM num )))));;
 
-
-let factorial_five = factorial_generic 5  
-let factorial_five_eval = VNUM 120 = eval factorial_five;;
-let factorial_five_type = TINT = typeInfer factorial_five;;
-
-Printf.printf "Fatorial (5) Eval: %B\n" factorial_five_eval;;
-Printf.printf "Fatorial (5) Type: %B\n\n" factorial_five_type;;  
-
+  
+let fatorial_five = fatorial_generic 5 TINT TINT
+let fatorial_five_eval = VNUM 120 = eval fatorial_five;;
+let fatorial_five_type = TINT = typeInfer fatorial_five;;
+  
+let fatorial_wrong_type1 = None = try Some (typeInfer (fatorial_generic 5 TBOOL TINT)) with BadTypedExpression -> None;;
+let fatorial_wrong_type2 = None = try Some (typeInfer (fatorial_generic 5 TINT TBOOL)) with BadTypedExpression -> None;;  
+  
+Printf.printf "Fatorial (5) Eval: %B\n" fatorial_five_eval;;
+Printf.printf "Fatorial (5) Type: %B\n" fatorial_five_type;;  
+Printf.printf "Fatorial Wrong Type Detected: %B %B \n\n" fatorial_wrong_type1 fatorial_wrong_type2;;
 
   
 let fn_input = FN ("x", TINT, (VAR "x"));;
 let fn_eval = Closure ("x", (VAR "x"), []) = eval fn_input;;
 let fn_type = TFN (TINT, TINT) = typeInfer fn_input;;
-
+  
+let fn_wrong_type = None = try Some (typeInfer (FN ("x", TINT, (UOP (NOT, (VAR "x")))))) with BadTypedExpression -> None;;
+  
 Printf.printf "Simple function Eval: %B\n" fn_eval;;
-Printf.printf "Simple function Type: %B\n\n" fn_type;;
-
+Printf.printf "Simple function Type: %B\n" fn_type;;
+Printf.printf "Function Wrong Type Detected: %B \n\n" fn_wrong_type;;
 
 
 let let_input = LET ("y", TFN(TINT,TINT), (FN ("x", TINT, (VAR "x"))), (APP ((VAR "y"), (ENUM 0))));;
 let let_eval = VNUM 0 = eval let_input;;
 let let_type = TINT = typeInfer let_input;;
+  
+let let_wrong_type = None = try Some (typeInfer (LET ("y", TINT, (FN ("x", TINT, (VAR "x"))), (APP ((VAR "y"), (ENUM 0)))))) with BadTypedExpression -> None;;
 
 Printf.printf "Simple Let Eval: %B\n" let_eval;;
-Printf.printf "Simple Let Type: %B\n\n" let_type;;
-  
+Printf.printf "Simple Let Type: %B\n" let_type;;
+Printf.printf "Let Wrong Type Detected: %B \n\n" let_wrong_type;;
   
 let app_input = APP ((FN ("x", TINT, (VAR "x"))), (ENUM 0));;
 let app_eval = VNUM 0 = eval app_input;;
 let app_type = TINT = typeInfer app_input;;
-
+  
+let app_wrong_type1 = None = try Some (typeInfer (APP ((FN ("x", TINT, (VAR "x"))), (EBOOL true)))) with BadTypedExpression -> None;;
+let app_wrong_type2 = None = try Some (typeInfer (APP ((FN ("x", TBOOL, (VAR "x"))), (ENUM 0)))) with BadTypedExpression -> None;;
+  
 Printf.printf "Simple Application Eval: %B\n" app_eval;;
-Printf.printf "Simple Application Type: %B\n\n" app_type;;
-
+Printf.printf "Simple Application Type: %B\n" app_type;;
+Printf.printf "App Wrong Type Detected: %B %B\n\n" app_wrong_type1 app_wrong_type2;;
 
   
 let not_input1 = UOP (NOT, (EBOOL true));;  
@@ -531,10 +545,12 @@ let not_eval1 = VBOOL false = eval not_input1;;
 let not_eval2 = VBOOL true  = eval not_input2;;
 let not_type1 = TBOOL = typeInfer not_input1;;				     
 let not_type2 = TBOOL = typeInfer not_input2;;
-
+  
+let not_wrong_type = None = try Some (typeInfer (UOP (NOT, (ENUM 0)))) with BadTypedExpression -> None;;
+  
 Printf.printf "Not expression Eval: %B %B\n" not_eval1 not_eval2;;
-Printf.printf "Not expression Type: %B %B\n\n" not_type1 not_type2;;
-
+Printf.printf "Not expression Type: %B %B\n" not_type1 not_type2;;
+Printf.printf "Not Wrong Type Detected: %B\n\n" not_wrong_type;;
 
   
 let and_input1 = BOP ((EBOOL false), AND,  (EBOOL false));;
@@ -549,10 +565,14 @@ let and_type1 = TBOOL = typeInfer and_input1;;
 let and_type2 = TBOOL = typeInfer and_input2;;
 let and_type3 = TBOOL = typeInfer and_input3;;
 let and_type4 = TBOOL = typeInfer and_input4;;
-
+  
+let and_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), AND, (EBOOL false)))) with BadTypedExpression -> None;;
+let and_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), AND, (ENUM 0)))) with BadTypedExpression -> None;;
+let and_wrong_type3 = None = try Some (typeInfer (BOP ((ENUM 0), AND, (ENUM 0)))) with BadTypedExpression -> None;;
+  
 Printf.printf "And expression Eval: %B %B %B %B\n" and_eval1 and_eval2 and_eval3 and_eval4;;
-Printf.printf "And expression Type: %B %B %B %B\n\n" and_type1 and_type2 and_type3 and_type4;;
-
+Printf.printf "And expression Type: %B %B %B %B\n" and_type1 and_type2 and_type3 and_type4;;
+Printf.printf "And Wrong Type Detected: %B %B %B\n\n" and_wrong_type1 and_wrong_type2 and_wrong_type3;;
 
   
 let or_input1 = BOP ((EBOOL false), OR,  (EBOOL false));;
@@ -567,10 +587,14 @@ let or_type1 = TBOOL = typeInfer or_input1;;
 let or_type2 = TBOOL = typeInfer or_input2;;
 let or_type3 = TBOOL = typeInfer or_input3;;
 let or_type4 = TBOOL = typeInfer or_input4;;
-
+  
+let or_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), OR, (EBOOL false)))) with BadTypedExpression -> None;;
+let or_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), OR, (ENUM 0)))) with BadTypedExpression -> None;;
+let or_wrong_type3 = None = try Some (typeInfer (BOP ((ENUM 0), OR, (ENUM 0)))) with BadTypedExpression -> None;;
+  
 Printf.printf "Or expression Eval: %B %B %B %B\n" or_eval1 or_eval2 or_eval3 or_eval4;;
-Printf.printf "Or expression Type: %B %B %B %B\n\n" or_type1 or_type2 or_type3 or_type4;;
-
+Printf.printf "Or expression Type: %B %B %B %B\n" or_type1 or_type2 or_type3 or_type4;;
+Printf.printf "Or Wrong Type Detected: %B %B %B\n\n" or_wrong_type1 or_wrong_type2 or_wrong_type3;;
 
   
 let sum_input1 = BOP ((ENUM 0), SUM,  (ENUM 0));;
@@ -594,10 +618,14 @@ let sum_type4 = TINT = typeInfer sum_input4;;
 let sum_type5 = TINT = typeInfer sum_input5;;
 let sum_type6 = TINT = typeInfer sum_input6;;
 let sum_type7 = TINT = typeInfer sum_input7;;
-
+  
+let sum_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), SUM, (EBOOL false)))) with BadTypedExpression -> None;;
+let sum_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), SUM, (ENUM 0)))) with BadTypedExpression -> None;;
+let sum_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), SUM, (EBOOL false)))) with BadTypedExpression -> None;;
+  
 Printf.printf "Sum expression Eval: %B %B %B %B %B %B %B \n" sum_eval1 sum_eval2 sum_eval3 sum_eval4 sum_eval5 sum_eval6 sum_eval7;;
-Printf.printf "Sum expression Type: %B %B %B %B %B %B %B \n\n" sum_type1 sum_type2 sum_type3 sum_type4 sum_type5 sum_type6 sum_type7;;  
-
+Printf.printf "Sum expression Type: %B %B %B %B %B %B %B \n" sum_type1 sum_type2 sum_type3 sum_type4 sum_type5 sum_type6 sum_type7;;  
+Printf.printf "Sum Wrong Type Detected: %B %B %B\n\n" sum_wrong_type1 sum_wrong_type2 sum_wrong_type3;;
   
 
 let diff_input1 = BOP ((ENUM 0), DIFF,  (ENUM 0));;
@@ -621,10 +649,14 @@ let diff_type4 = TINT = typeInfer diff_input4;;
 let diff_type5 = TINT = typeInfer diff_input5;;
 let diff_type6 = TINT = typeInfer diff_input6;;
 let diff_type7 = TINT = typeInfer diff_input7;;
-
+  
+let diff_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), DIFF, (EBOOL false)))) with BadTypedExpression -> None;;
+let diff_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), DIFF, (ENUM 0)))) with BadTypedExpression -> None;;
+let diff_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), DIFF, (EBOOL false)))) with BadTypedExpression -> None;;
+  
 Printf.printf "Diff expression Eval: %B %B %B %B %B %B %B \n" diff_eval1 diff_eval2 diff_eval3 diff_eval4 diff_eval5 diff_eval6 diff_eval7;;
-Printf.printf "Diff expression Type: %B %B %B %B %B %B %B \n\n" diff_type1 diff_type2 diff_type3 diff_type4 diff_type5 diff_type6 diff_type7;;  
-
+Printf.printf "Diff expression Type: %B %B %B %B %B %B %B \n" diff_type1 diff_type2 diff_type3 diff_type4 diff_type5 diff_type6 diff_type7;;  
+Printf.printf "Diff Wrong Type Detected: %B %B %B\n\n" diff_wrong_type1 diff_wrong_type2 diff_wrong_type3;;
 
   
 let div_input1 = BOP ((ENUM 0), DIV,  (ENUM 0));;
@@ -652,9 +684,13 @@ let div_type6 = TINT = typeInfer div_input6;;
 let div_type7 = TINT = typeInfer div_input7;;
 let div_type8 = TINT = typeInfer div_input8;;
   
+let div_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), DIV, (EBOOL false)))) with BadTypedExpression -> None;;
+let div_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), DIV, (ENUM 0)))) with BadTypedExpression -> None;;
+let div_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), DIV, (EBOOL false)))) with BadTypedExpression -> None;;  
+  
 Printf.printf "Div expression Eval: %B %B %B %B %B %B %B %B \n" div_eval1 div_eval2 div_eval3 div_eval4 div_eval5 div_eval6 div_eval7 div_eval8;;
-Printf.printf "Div expression Type: %B %B %B %B %B %B %B %B \n\n" div_type1 div_type2 div_type3 div_type4 div_type5 div_type6 div_type7 div_type8;;  
-
+Printf.printf "Div expression Type: %B %B %B %B %B %B %B %B \n" div_type1 div_type2 div_type3 div_type4 div_type5 div_type6 div_type7 div_type8;;  
+Printf.printf "Div Wrong Type Detected: %B %B %B\n\n" div_wrong_type1 div_wrong_type2 div_wrong_type3;;
 
   
 let mult_input1 = BOP ((ENUM 0), MULT,  (ENUM 0));;
@@ -684,11 +720,14 @@ let mult_type6 = TINT = typeInfer mult_input6;;
 let mult_type7 = TINT = typeInfer mult_input7;;
 let mult_type8 = TINT = typeInfer mult_input8;;
 let mult_type9 = TINT = typeInfer mult_input9;;
-
+  
+let mult_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), MULT, (EBOOL false)))) with BadTypedExpression -> None;;
+let mult_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), MULT, (ENUM 0)))) with BadTypedExpression -> None;;  
+let mult_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), MULT, (EBOOL false)))) with BadTypedExpression -> None;;  
   
 Printf.printf "Mult expression Eval: %B %B %B %B %B %B %B %B %B \n" mult_eval1 mult_eval2 mult_eval3 mult_eval4 mult_eval5 mult_eval6 mult_eval7 mult_eval8 mult_eval9;;
-Printf.printf "Mult expression Type: %B %B %B %B %B %B %B %B %B \n\n" mult_type1 mult_type2 mult_type3 mult_type4 mult_type5 mult_type6 mult_type7 mult_type8 mult_type9;;  
-
+Printf.printf "Mult expression Type: %B %B %B %B %B %B %B %B %B \n" mult_type1 mult_type2 mult_type3 mult_type4 mult_type5 mult_type6 mult_type7 mult_type8 mult_type9;;  
+Printf.printf "Mult Wrong Type Detected: %B %B %B\n\n" mult_wrong_type1 mult_wrong_type2 mult_wrong_type3;;
 
   
 let lt_input1 = BOP ((ENUM 0), LT,  (ENUM 0));;
@@ -700,10 +739,14 @@ let lt_eval3 = VBOOL true  = eval lt_input3;;
 let lt_type1 = TBOOL = typeInfer lt_input1;;
 let lt_type2 = TBOOL = typeInfer lt_input2;;
 let lt_type3 = TBOOL = typeInfer lt_input3;;
-
+  
+let lt_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), LT, (EBOOL false)))) with BadTypedExpression -> None;;
+let lt_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), LT, (ENUM 0)))) with BadTypedExpression -> None;;  
+let lt_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), LT, (EBOOL false)))) with BadTypedExpression -> None;;
+  
 Printf.printf "LT expression Eval: %B %B %B \n" lt_eval1 lt_eval2 lt_eval3;;
-Printf.printf "LT expression Type: %B %B %B \n\n" lt_type1 lt_type2 lt_type3;;
-
+Printf.printf "LT expression Type: %B %B %B \n" lt_type1 lt_type2 lt_type3;;
+Printf.printf "LT Wrong Type Detected: %B %B %B\n\n" lt_wrong_type1 lt_wrong_type2 lt_wrong_type3;;
 
 
 let leq_input1 = BOP ((ENUM 0), LEQ,  (ENUM 0));;
@@ -716,9 +759,14 @@ let leq_type1 = TBOOL = typeInfer leq_input1;;
 let leq_type2 = TBOOL = typeInfer leq_input2;;
 let leq_type3 = TBOOL = typeInfer leq_input3;;
 
+let leq_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), LEQ, (EBOOL false)))) with BadTypedExpression -> None;;
+let leq_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), LEQ, (ENUM 0)))) with BadTypedExpression -> None;;  
+let leq_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), LEQ, (EBOOL false)))) with BadTypedExpression -> None;;  
+  
+  
 Printf.printf "LEQ expression Eval: %B %B %B \n" leq_eval1 leq_eval2 leq_eval3;;
-Printf.printf "LEQ expression Type: %B %B %B \n\n" leq_type1 leq_type2 leq_type3;;      
-
+Printf.printf "LEQ expression Type: %B %B %B \n" leq_type1 leq_type2 leq_type3;;      
+Printf.printf "LEQ Wrong Type Detected: %B %B %B\n\n" leq_wrong_type1 leq_wrong_type2 leq_wrong_type3;;
 
 
 let gt_input1 = BOP ((ENUM 0), GT,  (ENUM 0));;
@@ -731,9 +779,13 @@ let gt_type1 = TBOOL = typeInfer gt_input1;;
 let gt_type2 = TBOOL = typeInfer gt_input2;;
 let gt_type3 = TBOOL = typeInfer gt_input3;;
 
+let gt_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), GT, (EBOOL false)))) with BadTypedExpression -> None;;
+let gt_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), GT, (ENUM 0)))) with BadTypedExpression -> None;;  
+let gt_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), GT, (EBOOL false)))) with BadTypedExpression -> None;;
+  
 Printf.printf "GT expression Eval: %B %B %B \n" gt_eval1 gt_eval2 gt_eval3;;
-Printf.printf "GT expression Type: %B %B %B \n\n" gt_type1 gt_type2 gt_type3;;
-
+Printf.printf "GT expression Type: %B %B %B \n" gt_type1 gt_type2 gt_type3;;
+Printf.printf "GT Wrong Type Detected: %B %B %B\n\n" gt_wrong_type1 gt_wrong_type2 gt_wrong_type3;;
 
 
 let geq_input1 = BOP ((ENUM 0), GEQ,  (ENUM 0));;
@@ -746,9 +798,13 @@ let geq_type1 = TBOOL = typeInfer geq_input1;;
 let geq_type2 = TBOOL = typeInfer geq_input2;;
 let geq_type3 = TBOOL = typeInfer geq_input3;;
 
-Printf.printf "GEQ expression Eval: %B %B %B \n" geq_eval1 geq_eval2 geq_eval3;;
-Printf.printf "GEQ expression Type: %B %B %B \n\n" geq_type1 geq_type2 geq_type3;;      
+let geq_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), GEQ, (EBOOL false)))) with BadTypedExpression -> None;;
+let geq_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), GEQ, (ENUM 0)))) with BadTypedExpression -> None;;  
+let geq_wrong_type3 = None = try Some (typeInfer (BOP ((EBOOL false), GEQ, (EBOOL false)))) with BadTypedExpression -> None;;  
   
+Printf.printf "GEQ expression Eval: %B %B %B \n" geq_eval1 geq_eval2 geq_eval3;;
+Printf.printf "GEQ expression Type: %B %B %B \n" geq_type1 geq_type2 geq_type3;;      
+Printf.printf "GEQ Wrong Type Detected: %B %B %B\n\n" geq_wrong_type1 geq_wrong_type2 geq_wrong_type3;;  
 
 
 let eq_input1 = BOP ((ENUM 0), EQ,  (ENUM 0));;
@@ -776,9 +832,12 @@ let eq_type6 = TBOOL = typeInfer eq_input6;;
 let eq_type7 = TBOOL = typeInfer eq_input7;;
 let eq_type8 = TBOOL = typeInfer eq_input8;;
 
+let eq_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), EQ, (EBOOL false)))) with BadTypedExpression -> None;;
+let eq_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), EQ, (ENUM 0)))) with BadTypedExpression -> None;;    
+
 Printf.printf "EQ expression Eval: %B %B %B %B %B %B %B %B \n" eq_eval1 eq_eval2 eq_eval3 eq_eval4 eq_eval5 eq_eval6 eq_eval7 eq_eval8;;
-Printf.printf "EQ expression Type: %B %B %B %B %B %B %B %B \n\n" eq_type1 eq_type2 eq_type3 eq_type4 eq_type5 eq_type6 eq_type7 eq_type8;;   
-  
+Printf.printf "EQ expression Type: %B %B %B %B %B %B %B %B \n" eq_type1 eq_type2 eq_type3 eq_type4 eq_type5 eq_type6 eq_type7 eq_type8;;   
+Printf.printf "EQ Wrong Type Detected: %B %B \n\n" eq_wrong_type1 eq_wrong_type2;;  
 
 
 let neq_input1 = BOP ((ENUM 0), NEQ,  (ENUM 0));;
@@ -806,9 +865,12 @@ let neq_type6 = TBOOL = typeInfer neq_input6;;
 let neq_type7 = TBOOL = typeInfer neq_input7;;
 let neq_type8 = TBOOL = typeInfer neq_input8;;
 
-Printf.printf "NEQ expression Eval: %B %B %B %B %B %B %B %B \n" neq_eval1 neq_eval2 neq_eval3 neq_eval4 neq_eval5 neq_eval6 neq_eval7 neq_eval8;;
-Printf.printf "NEQ expression Type: %B %B %B %B %B %B %B %B \n\n" neq_type1 neq_type2 neq_type3 neq_type4 neq_type5 neq_type6 neq_type7 neq_type8;;
+let neq_wrong_type1 = None = try Some (typeInfer (BOP ((ENUM 0), NEQ, (EBOOL false)))) with BadTypedExpression -> None;;
+let neq_wrong_type2 = None = try Some (typeInfer (BOP ((EBOOL false), NEQ, (ENUM 0)))) with BadTypedExpression -> None;;  
   
+Printf.printf "NEQ expression Eval: %B %B %B %B %B %B %B %B \n" neq_eval1 neq_eval2 neq_eval3 neq_eval4 neq_eval5 neq_eval6 neq_eval7 neq_eval8;;
+Printf.printf "NEQ expression Type: %B %B %B %B %B %B %B %B \n" neq_type1 neq_type2 neq_type3 neq_type4 neq_type5 neq_type6 neq_type7 neq_type8;;
+Printf.printf "NEQ Wrong Type Detected: %B %B \n\n" neq_wrong_type1 neq_wrong_type2;;    
 
 
 let if_input1 = IF ((EBOOL true), (ENUM 1), (ENUM 0));;
@@ -817,11 +879,14 @@ let if_eval1 = VNUM 1 = eval if_input1;;
 let if_eval2 = VNUM 0 = eval if_input2;;
 let if_type1 = TINT = typeInfer if_input1;;
 let if_type2 = TINT = typeInfer if_input2;;
-
-
+  
+let if_wrong_type1 = None = try Some (typeInfer (IF ((EBOOL true), (ENUM 0), (EBOOL true)))) with BadTypedExpression -> None;;
+let if_wrong_type2 = None = try Some (typeInfer (IF ((EBOOL true), (EBOOL true), (ENUM 0)))) with BadTypedExpression -> None;;
+let if_wrong_type3 = None = try Some (typeInfer (IF ((ENUM 0), (ENUM 0), (ENUM 0)))) with BadTypedExpression -> None;;
+  
 Printf.printf "IF expression Eval: %B %B  \n" if_eval1 if_eval2;;
-Printf.printf "IF expression Type: %B %B \n\n" if_type1 if_type2;;
-
+Printf.printf "IF expression Type: %B %B \n" if_type1 if_type2;;
+Printf.printf "IF Wrong Type Detected: %B %B %B\n\n" if_wrong_type1 if_wrong_type2 if_wrong_type3;;  
 
 
 let int_input1 = ENUM 0;;
@@ -853,5 +918,8 @@ let var_input = LET ("y", TFN(TINT,TINT), (FN ("x", TINT, (VAR "x"))), (VAR "y")
 let var_eval = Closure ("x", (VAR "x"), []) = eval var_input;;
 let var_type = TFN (TINT,TINT) = typeInfer var_input;;
 
+let var_wrong_type = None = try Some (typeInfer (VAR "x")) with BadTypedExpression -> None;;
+  
 Printf.printf "Simple Var Eval: %B\n" var_eval;;
-Printf.printf "Simple Var Type: %B\n\n" var_type;;
+Printf.printf "Simple Var Type: %B\n" var_type;;
+Printf.printf "VAR Wrong Type Detected: %B\n\n" var_wrong_type;;

@@ -217,12 +217,17 @@ let rec internalTypeInfer typeEnvironment expression =
   | LET (variable, variableType, expressionOne, expressionTwo) ->
      let letTypeInfer typeEnvironment ( variable, variableType, expressionOne, expressionTwo ) =
        let
-         newTypeEnvironment = insertEnv variable variableType typeEnvironment
+	 expressionOneType = internalTypeInfer typeEnvironment expressionOne
+       and
+	 newTypeEnvironment = insertEnv variable variableType typeEnvironment
        in
-       match internalTypeInfer typeEnvironment expressionOne with
-       | _ ->
+       match expressionOneType with
+       | _ when (expressionOneType = variableType) ->
           internalTypeInfer newTypeEnvironment expressionTwo
 
+       | _ ->
+	  raise BadTypedLetStatement
+			    
      in letTypeInfer typeEnvironment (variable, variableType, expressionOne, expressionTwo)
 
 		     

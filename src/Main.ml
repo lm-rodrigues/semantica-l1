@@ -257,7 +257,7 @@ exception NotValidIFExpression
 exception NotValidAppExpression
 exception NotValidLetExpression
 
-let binaryOperationEval environment expressionOneEval operator expressionTwoEval =
+let binaryOperationEval operator expressionOneEval expressionTwoEval =
   match ( operator, expressionOneEval, expressionTwoEval ) with
   | (SUM, VNUM valueOne, VNUM valueTwo ) ->
      VNUM (valueOne + valueTwo)
@@ -268,9 +268,14 @@ let binaryOperationEval environment expressionOneEval operator expressionTwoEval
   | (MULT, VNUM valueOne, VNUM valueTwo ) ->
      VNUM (valueOne * valueTwo)
 	  
-  | (DIV, VNUM valueOne, VNUM valueTwo ) ->
+  | (DIV, VNUM valueOne, VNUM valueTwo )
+       when valueTwo != 0 ->
      VNUM (valueOne / valueTwo)
-	  
+
+  | (DIV, VNUM _, VNUM valueTwo )
+       when valueTwo = 0 ->
+     VNUM 0
+	   
   | (LT, VNUM valueOne, VNUM valueTwo ) ->
      VBOOL (valueOne < valueTwo)
 	   
@@ -294,45 +299,91 @@ let binaryOperationEval environment expressionOneEval operator expressionTwoEval
 	   
   | (NEQ, VBOOL valueOne, VBOOL valueTwo) ->
      VBOOL (valueOne != valueTwo)
-	   
-  | (AND, VBOOL valueOne, VBOOL valueTwo) ->
-     VBOOL (valueOne && valueTwo)
-	   
-  | (OR, VBOOL valueOne, VBOOL valueTwo) ->
-     VBOOL (valueOne || valueTwo)
-
+	       
   | _ ->
      raise NotValidBinaryExpression
 
-	   
+  
 let rec internalEval environment expression =
   match expression with
   | ENUM number ->
      VNUM number
+
+	  
 	  
   | EBOOL boolean ->
      VBOOL boolean
 
+
+	   
   | UOP (operator, expressionOne) ->
      let unaryOperationEval environment operator expressionOne =
        match ( operator, internalEval environment expressionOne ) with
-       | ( NOT, VBOOL valueOne) ->
-          VBOOL (not valueOne)
+       | ( NOT, VBOOL value) ->
+	  let notEval value =
+	    match value with
+	    | true ->
+	       VBOOL false
+	    | false ->
+	       VBOOL true
+	  in
+	  notEval value
 		
        | _ ->
           raise NotValidUnaryExpression
      in 
      unaryOperationEval environment operator expressionOne
 
-  | BOP (expressionOne, operator, expressionTwo) ->
-     let expressionOneEval = internalEval environment expressionOne
-     and expressionTwoEval = internalEval environment expressionTwo
-     in 
-     binaryOperationEval environment expressionOneEval operator expressionTwoEval
 
+			
+  | BOP (expressionOne, operator, expressionTwo) ->
+     let binaryOperationShortCircuit expressionOne expressionTwo =
+       let expressionOneEval = internalEval environment expressionOne
+       and expressionTwoEval = internalEval environment expressionTwo
+       in
+       match operator with
+       | AND ->
+	  let andEval expressionOneEval expressionTwoEval =
+	    match (expressionOneEval) with
+	    | (VBOOL true) ->
+	       expressionTwoEval
+		     
+	    | (VBOOL false) ->
+	       VBOOL false
+
+	    | _ ->
+	       raise NotValidBinaryExpression
+	  in
+	  andEval expressionOneEval expressionTwoEval
+
+		  
+       | OR ->
+	  let orEval expressionOneEval expressionTwoEval =
+	    match (expressionOneEval) with
+	    | (VBOOL false) ->
+	       expressionTwoEval
+		
+	    | (VBOOL true) ->
+	       VBOOL true
+		     
+	    | _ ->
+	       raise NotValidBinaryExpression
+	  in
+	  orEval expressionOneEval expressionTwoEval
+
+		 
+       | _ ->
+	  binaryOperationEval operator expressionOneEval expressionTwoEval
+     in
+     binaryOperationShortCircuit expressionOne expressionTwo
+
+
+				 
   | VAR variable ->
      envLookup variable environment
 
+
+	       
   | IF (condition, thenExpression, elseExpression) ->
      let ifEval environment condition thenCase elseCase =
        match internalEval environment condition with
@@ -346,6 +397,8 @@ let rec internalEval environment expression =
      in
      ifEval environment condition thenExpression elseExpression
 
+
+	    
   | APP (languageFunction, argument) ->
      let appEval environment functioN argument =
        match ( internalEval environment languageFunction
@@ -359,19 +412,20 @@ let rec internalEval environment expression =
             recClosure = RClosure (recVariable, fnVariable, subExpression, fnEnvironment)
           in
           internalEval
-            (insertEnv fnVariable value (insertEnv
-                                           recVariable
-                                           recClosure
-                                           fnEnvironment))
-            subExpression
+            (insertEnv fnVariable value (insertEnv recVariable recClosure fnEnvironment)) subExpression
             
        | _ ->
           raise NotValidAppExpression
+		
      in appEval environment languageFunction argument
 
+
+		
   | FN ( variable, _, expression ) ->
      Closure (variable, expression, environment)
 
+
+	     
   | LET (variable, inputType, subExpression, expression) ->
      let letEval environment ( variable, _, subExpression ) expression =
        match internalEval environment subExpression with
@@ -382,14 +436,13 @@ let rec internalEval environment expression =
             
      in letEval environment (variable, inputType, subExpression) expression
 
+
+		
   | LETREC (recursiveVariable, _, _, variable, inputType, subExpression, expression) ->
      let letRecEval environment recVariable ( fnVariable, _, subExpression ) expression =
        let
          recursiveEnvironment =
-         insertEnv
-           recVariable
-           (RClosure (recVariable, fnVariable, subExpression, environment))
-           environment
+         insertEnv recVariable (RClosure (recVariable, fnVariable, subExpression, environment)) environment
        in
        internalEval recursiveEnvironment expression
      in letRecEval environment recursiveVariable (variable, inputType, subExpression) expression
